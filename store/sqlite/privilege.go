@@ -13,12 +13,30 @@ func (s *SqliteStoreCtx) GetPrivilege(id int64) (*store.Privilege, error) {
 	return &privilege, err
 }
 
+// GetPrivilegeByName implements store.StoreCtx.
+func (s *SqliteStoreCtx) GetPrivilegeByName(name string) (*store.Privilege, error) {
+	var privilege store.Privilege
+	err := s.db.Get(&privilege, "SELECT id, name, description FROM privilege WHERE name = ?", name)
+	return &privilege, err
+}
+
+// GetUserPrivileges implements store.StoreCtx.
+func (s *SqliteStoreCtx) GetUserPrivileges(userID int64) ([]store.UserPrivilege, error) {
+	privileges := []store.UserPrivilege{}
+	err := s.db.Select(&privileges, "SELECT p.id, p.name, p.description FROM privilege p JOIN user_privilege up ON p.id = up.privilege WHERE up.user = ?", userID)
+	return privileges, err
+}
+
 // FindPrivileges implements store.StoreCtx.
 func (s *SqliteStoreCtx) FindPrivileges(f store.PrivilegeFilter, offset int64, limit int) ([]store.Privilege, int64, error) {
 	ctx := filterCtx{}
 	ctx.Int64("id", f.ID)
 	ctx.String("name", f.Name)
 	ctx.String("description", f.Description)
+
+	if !s.ValidLimit(limit) {
+		return nil, 0, fmt.Errorf("invalid limit %d", limit)
+	}
 
 	qry := "SELECT count(id) FROM privilege"
 	qry = ctx.AppendWhere(qry)
@@ -68,6 +86,32 @@ func (s *SqliteStoreCtx) AddPrivileges(privileges []store.Privilege) ([]store.Pr
 }
 
 // DeletePrivileges implements store.StoreCtx.
-func (*SqliteStoreCtx) DeletePrivileges(ids []int) error {
-	panic("unimplemented")
+func (s *SqliteStoreCtx) DeletePrivileges(ids []int64) error {
+	tx := s.db.MustBegin()
+	qry := "DELETE FROM privilege WHERE id IN ("
+	args := []interface{}{}
+	for i, id := range ids {
+		if i > 0 {
+			qry += ","
+		}
+		qry += "?"
+		args = append(args, id)
+	}
+	qry += ")"
+	rs, err := tx.Exec(qry, args...)
+	if err != nil {
+		if err.Error() == "FOREIGN KEY constraint failed" {
+			return fmt.Errorf("error delete privilege: record in use")
+		}
+		return fmt.Errorf("error delete privilege %s: %v", qry, err)
+	}
+	affected, err := rs.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error delete privilege affected  %+v: %v", ids, err)
+	}
+	if affected != int64(len(ids)) {
+		return fmt.Errorf("error delete privilege affected %v, %+v", affected, ids)
+	}
+	err = tx.Commit()
+	return err
 }

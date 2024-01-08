@@ -1,19 +1,22 @@
-package main
+package store
 
 import (
 	"encoding/json"
-	"fmt"
+	"os"
 	"reflect"
 	"testing"
 
 	"github.com/senomas/gohtmx/store"
-	"github.com/senomas/gohtmx/store/sqlite"
+	_ "github.com/senomas/gohtmx/store/sqlite"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStoreSqlite(t *testing.T) {
-	fmt.Println("TestDummy")
-	storeCtx := sqlite.InitStoreCtx()
+func TestUserPrivilegeCrud(t *testing.T) {
+	db_type := os.Getenv("DB_TYPE")
+	if db_type == "" {
+		db_type = "sqlite"
+	}
+	storeCtx := store.Get(db_type)
 	assert.NotNil(t, storeCtx)
 	defer storeCtx.Close()
 
@@ -27,7 +30,7 @@ func TestStoreSqlite(t *testing.T) {
 		}
 		privileges, err := storeCtx.AddPrivileges(newPrivileges)
 		assert.NoError(t, err)
-		str := mustSerialize(t, stripRow(t, privileges))
+		str := MustSerialize(t, StripRow(t, privileges))
 		estr, _ := json.MarshalIndent([]map[string]interface{}{
 			{
 				"Description": "Administrator",
@@ -71,7 +74,7 @@ func TestStoreSqlite(t *testing.T) {
 			}
 		}
 		assert.NoError(t, err)
-		str := mustSerialize(t, stripRow(t, users))
+		str := MustSerialize(t, StripRow(t, users))
 		estr, _ := json.MarshalIndent([]map[string]interface{}{
 			{
 				"Name": "Admin 1",
@@ -131,7 +134,7 @@ func TestStoreSqlite(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "User 1", *user.Name)
 		assert.Truef(t, store.VerifyPassword("dodol123", *user.Password), "invalid password")
-		str := mustSerialize(t, stripRow(t, user))
+		str := MustSerialize(t, StripRow(t, user))
 		estr, _ := json.MarshalIndent(map[string]interface{}{
 			"Name": "User 1",
 			"Privileges": []map[string]interface{}{
@@ -148,7 +151,7 @@ func TestStoreSqlite(t *testing.T) {
 	t.Run("Get demo", func(t *testing.T) {
 		user, err := storeCtx.GetUserByName("Demo")
 		assert.NoError(t, err)
-		str := mustSerialize(t, stripRow(t, user))
+		str := MustSerialize(t, StripRow(t, user))
 		estr, _ := json.MarshalIndent(map[string]interface{}{
 			"Name":       "Demo",
 			"Privileges": []map[string]interface{}{},
@@ -172,7 +175,7 @@ func TestStoreSqlite(t *testing.T) {
 		assert.NoError(t, err)
 		user, err = storeCtx.GetUser(user.ID)
 		assert.NoError(t, err)
-		str := mustSerialize(t, stripRow(t, user))
+		str := MustSerialize(t, StripRow(t, user))
 		estr, _ := json.MarshalIndent(map[string]interface{}{
 			"Name": "Demo",
 			"Privileges": []map[string]interface{}{
@@ -207,7 +210,7 @@ func TestStoreSqlite(t *testing.T) {
 		assert.NoError(t, err)
 		user, err = storeCtx.GetUser(user.ID)
 		assert.NoError(t, err)
-		str := mustSerialize(t, stripRow(t, user))
+		str := MustSerialize(t, StripRow(t, user))
 		estr, _ := json.MarshalIndent(map[string]interface{}{
 			"Name": "Demo",
 			"Privileges": []map[string]interface{}{
@@ -233,7 +236,7 @@ func TestStoreSqlite(t *testing.T) {
 		assert.NoError(t, err)
 		user, err = storeCtx.GetUser(user.ID)
 		assert.NoError(t, err)
-		str := mustSerialize(t, stripRow(t, user))
+		str := MustSerialize(t, StripRow(t, user))
 		estr, _ := json.MarshalIndent(map[string]interface{}{
 			"Name": "User 4",
 			"Privileges": []map[string]interface{}{
@@ -253,7 +256,7 @@ func TestStoreSqlite(t *testing.T) {
 		users, userTotal, err := storeCtx.FindUsers(userFilter, 0, 10)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(4), userTotal)
-		str := mustSerialize(t, stripRow(t, users))
+		str := MustSerialize(t, StripRow(t, users))
 		estr, _ := json.MarshalIndent([]map[string]interface{}{
 			{
 				"Name":       "User 1",
@@ -284,6 +287,12 @@ func TestStoreSqlite(t *testing.T) {
 		assert.NoError(t, err)
 		err = storeCtx.DeleteUsers([]int64{user.ID})
 		assert.NoError(t, err)
+
+		t.Run("check user_privileges", func(t *testing.T) {
+			up, err := storeCtx.GetUserPrivileges(user.ID)
+			assert.NoError(t, err)
+			assert.Equal(t, 0, len(up))
+		})
 	})
 
 	t.Run("find name like User%", func(t *testing.T) {
@@ -292,7 +301,7 @@ func TestStoreSqlite(t *testing.T) {
 		users, userTotal, err := storeCtx.FindUsers(userFilter, 0, 10)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(3), userTotal)
-		str := mustSerialize(t, stripRow(t, users))
+		str := MustSerialize(t, StripRow(t, users))
 		estr, _ := json.MarshalIndent([]map[string]interface{}{
 			{
 				"Name":       "User 1",
@@ -319,7 +328,7 @@ func TestStoreSqlite(t *testing.T) {
 		users, userTotal, err := storeCtx.FindUsers(userFilter, 0, 10)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), userTotal)
-		str := mustSerialize(t, stripRow(t, users))
+		str := MustSerialize(t, StripRow(t, users))
 		estr, _ := json.MarshalIndent([]map[string]interface{}{
 			{
 				"Name":       "Admin 1",
@@ -329,15 +338,22 @@ func TestStoreSqlite(t *testing.T) {
 		}, "", "  ")
 		assert.Equal(t, string(estr), string(str))
 	})
+
+	t.Run("delete used privilege", func(t *testing.T) {
+		privilege, err := storeCtx.GetPrivilegeByName("User")
+		assert.NoError(t, err)
+		err = storeCtx.DeletePrivileges([]int64{privilege.ID})
+		assert.ErrorContains(t, err, "record in use")
+	})
 }
 
-func stripRow(t *testing.T, row interface{}) interface{} {
+func StripRow(t *testing.T, row interface{}) interface{} {
 	rv := reflect.ValueOf(row)
 	if rv.Kind() == reflect.Slice {
 		res := []interface{}{}
 		for i := 0; i < rv.Len(); i++ {
 			vv := rv.Index(i).Interface()
-			res = append(res, stripRow(t, vv))
+			res = append(res, StripRow(t, vv))
 		}
 		return res
 	}
@@ -353,7 +369,7 @@ func stripRow(t *testing.T, row interface{}) interface{} {
 				// skip
 			default:
 				v := rv.Field(i).Interface()
-				res[k] = stripRow(t, v)
+				res[k] = StripRow(t, v)
 			}
 		}
 		return res
@@ -368,7 +384,7 @@ func stripRow(t *testing.T, row interface{}) interface{} {
 				// skip
 			default:
 				vv := rv.MapIndex(k).Interface()
-				res[k.String()] = stripRow(t, vv)
+				res[k.String()] = StripRow(t, vv)
 			}
 		}
 		return res
@@ -379,13 +395,13 @@ func stripRow(t *testing.T, row interface{}) interface{} {
 		}
 		ve := rv.Elem()
 		if ve.IsValid() {
-			return stripRow(t, ve.Interface())
+			return StripRow(t, ve.Interface())
 		}
 	}
 	return row
 }
 
-func mustSerialize(t *testing.T, v interface{}) string {
+func MustSerialize(t *testing.T, v interface{}) string {
 	str, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		t.Fatal(err)

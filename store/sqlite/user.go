@@ -53,6 +53,10 @@ func (s *SqliteStoreCtx) FindUsers(f store.UserFilter, offset int64, limit int) 
 	ctx.String("name", f.Name)
 	ctx.String("email", f.Email)
 
+	if !s.ValidLimit(limit) {
+		return nil, 0, fmt.Errorf("invalid limit %d", limit)
+	}
+
 	qry := "SELECT count(id) FROM user"
 	qry = ctx.AppendWhere(qry)
 	var total int64
@@ -261,15 +265,19 @@ func (s *SqliteStoreCtx) DeleteUsers(ids []int64) error {
 	qry += ")"
 	rs, err := tx.Exec(qry, args...)
 	if err != nil {
+		if err.Error() == "FOREIGN KEY constraint failed" {
+			return fmt.Errorf("error delete user: record in use")
+		}
 		return fmt.Errorf("error delete user %s: %v", qry, err)
 	}
 	affected, err := rs.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error delete rows affected  %+v: %v", ids, err)
+		return fmt.Errorf("error delete user affected  %+v: %v", ids, err)
 	}
 	if affected != int64(len(ids)) {
-		return fmt.Errorf("error delete rows affected %v, %+v", affected, ids)
+		return fmt.Errorf("error delete user affected %v, %+v", affected, ids)
 	}
+
 	err = tx.Commit()
 	return err
 }

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -11,10 +12,16 @@ import (
 )
 
 type SqliteStoreCtx struct {
-	db *sqlx.DB
+	db       *sqlx.DB
+	maxLimit int
 }
 
-func InitStoreCtx() store.StoreCtx {
+func init() {
+	v := SqliteStoreCtx{}
+	store.AddImplementation("sqlite", v.init())
+}
+
+func (s *SqliteStoreCtx) init() store.StoreCtx {
 	url := os.Getenv("DB_URL")
 	if url == "" {
 		url = ":memory:"
@@ -24,7 +31,13 @@ func InitStoreCtx() store.StoreCtx {
 		panic(fmt.Errorf("error opening database [%s]: %v", url, err))
 	}
 
-	qry := `CREATE TABLE IF NOT EXISTS user (
+	qry := `PRAGMA foreign_keys = ON`
+	_, err = db.Exec(qry)
+	if err != nil {
+		panic(fmt.Errorf("error setup conn : %v\n\n%s", err, qry))
+	}
+
+	qry = `CREATE TABLE IF NOT EXISTS user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     email TEXT NOT NULL,
@@ -49,20 +62,37 @@ func InitStoreCtx() store.StoreCtx {
     user INTEGER NOT NULL,
     privilege INTEGER NOT NULL,
     UNIQUE(user, privilege),
-    FOREIGN KEY(user) REFERENCES user(id),
+    FOREIGN KEY(user) REFERENCES user(id) ON DELETE CASCADE,
     FOREIGN KEY(privilege) REFERENCES privilege(id)
   )`
 	_, err = db.Exec(qry)
 	if err != nil {
 		panic(fmt.Errorf("error creating table: %v\n\n%s", err, qry))
 	}
-	return &SqliteStoreCtx{
+	ctx := SqliteStoreCtx{
 		db: db,
 	}
+
+	maxLimit := os.Getenv("DB_MAX_LIMIT")
+	if maxLimit == "" {
+		ctx.maxLimit = 100
+	} else {
+		v, err := strconv.ParseInt(maxLimit, 10, 32)
+		if err != nil {
+			panic(fmt.Errorf("invalid DB_MAX_LIMIT '%s': %v", maxLimit, err))
+		}
+		ctx.maxLimit = int(v)
+	}
+
+	return &ctx
 }
 
 func (s *SqliteStoreCtx) Close() error {
 	return s.db.Close()
+}
+
+func (s *SqliteStoreCtx) ValidLimit(limit int) bool {
+	return limit > 0 && limit <= s.maxLimit
 }
 
 type filterCtx struct {
