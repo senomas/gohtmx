@@ -34,9 +34,35 @@ func InitStoreCtx() store.StoreCtx {
 	if err != nil {
 		panic(fmt.Errorf("error creating table: %v\n\n%s", err, qry))
 	}
+
+	qry = `CREATE TABLE IF NOT EXISTS privilege (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL
+  )`
+	_, err = db.Exec(qry)
+	if err != nil {
+		panic(fmt.Errorf("error creating table: %v\n\n%s", err, qry))
+	}
+
+	qry = `CREATE TABLE IF NOT EXISTS user_privilege (
+    user INTEGER NOT NULL,
+    privilege INTEGER NOT NULL,
+    UNIQUE(user, privilege),
+    FOREIGN KEY(user) REFERENCES user(id),
+    FOREIGN KEY(privilege) REFERENCES privilege(id)
+  )`
+	_, err = db.Exec(qry)
+	if err != nil {
+		panic(fmt.Errorf("error creating table: %v\n\n%s", err, qry))
+	}
 	return &SqliteStoreCtx{
 		db: db,
 	}
+}
+
+func (s *SqliteStoreCtx) Close() error {
+	return s.db.Close()
 }
 
 type filterCtx struct {
