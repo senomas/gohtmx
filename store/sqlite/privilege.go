@@ -57,6 +57,7 @@ func (s *SqliteStoreCtx) FindPrivileges(f store.PrivilegeFilter, offset int64, l
 // AddPrivileges implements store.StoreCtx.
 func (s *SqliteStoreCtx) AddPrivileges(privileges []store.Privilege) ([]store.Privilege, error) {
 	tx := s.db.MustBegin()
+	defer tx.Rollback()
 	ps, err := tx.PrepareNamed("INSERT INTO privilege (name, description) VALUES (:name, :description)")
 	if err != nil {
 		return nil, fmt.Errorf("error creating PrepareNamed: %v", err)
@@ -65,18 +66,18 @@ func (s *SqliteStoreCtx) AddPrivileges(privileges []store.Privilege) ([]store.Pr
 	for _, privilege := range privileges {
 		rs, err := ps.Exec(privilege)
 		if err != nil {
-			return res, fmt.Errorf("error insert %+v: %v", privilege, err)
+			return nil, s.handleError(err, "%s %v: %v", "error insert privilege", privilege, err)
 		}
 		affected, err := rs.RowsAffected()
 		if err != nil {
-			return res, fmt.Errorf("error insert rows affected %v, %+v: %v", affected, privilege, err)
+			return res, fmt.Errorf("error insert privilege affected %v, %+v: %v", affected, privilege, err)
 		}
 		if affected != 1 {
-			return res, fmt.Errorf("error insert rows affected %v, %+v", affected, privilege)
+			return res, fmt.Errorf("error insert privilege affected %v, %+v", affected, privilege)
 		}
 		id, err := rs.LastInsertId()
 		if err != nil {
-			return res, fmt.Errorf("error insert rows get id %+v: %v", privilege, err)
+			return res, fmt.Errorf("error insert privilege get id %+v: %v", privilege, err)
 		}
 		privilege.ID = id
 		res = append(res, privilege)
@@ -88,6 +89,7 @@ func (s *SqliteStoreCtx) AddPrivileges(privileges []store.Privilege) ([]store.Pr
 // DeletePrivileges implements store.StoreCtx.
 func (s *SqliteStoreCtx) DeletePrivileges(ids []int64) error {
 	tx := s.db.MustBegin()
+	defer tx.Rollback()
 	qry := "DELETE FROM privilege WHERE id IN ("
 	args := []interface{}{}
 	for i, id := range ids {
@@ -100,10 +102,7 @@ func (s *SqliteStoreCtx) DeletePrivileges(ids []int64) error {
 	qry += ")"
 	rs, err := tx.Exec(qry, args...)
 	if err != nil {
-		if err.Error() == "FOREIGN KEY constraint failed" {
-			return fmt.Errorf("error delete privilege: record in use")
-		}
-		return fmt.Errorf("error delete privilege %s: %v", qry, err)
+		return s.handleError(err, "%s '%s': %v", "error delete privilege", qry, err)
 	}
 	affected, err := rs.RowsAffected()
 	if err != nil {

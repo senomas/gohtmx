@@ -48,6 +48,14 @@ func TestUserPrivilegeCrud(t *testing.T) {
 		assert.Equal(t, string(estr), string(str))
 	})
 
+	t.Run("create duplicate privilege", func(t *testing.T) {
+		newPrivileges := []store.Privilege{
+			{Name: rs("User"), Description: rs("User")},
+		}
+		_, err := storeCtx.AddPrivileges(newPrivileges)
+		assert.ErrorContains(t, err, "duplicate record (privilege.name) 'User'")
+	})
+
 	var user1ID int64
 
 	t.Run("initialize user", func(t *testing.T) {
@@ -68,12 +76,12 @@ func TestUserPrivilegeCrud(t *testing.T) {
 			{Name: rs("Demo"), Email: rs("demo@foo.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{}},
 		}
 		users, err := storeCtx.AddUsers(newUsers)
+		assert.NoError(t, err)
 		for _, user := range users {
 			if *user.Name == "User 1" {
 				user1ID = user.ID
 			}
 		}
-		assert.NoError(t, err)
 		str := MustSerialize(t, StripRow(t, users))
 		estr, _ := json.MarshalIndent([]map[string]interface{}{
 			{
@@ -129,6 +137,34 @@ func TestUserPrivilegeCrud(t *testing.T) {
 		assert.Equal(t, string(estr), string(str))
 	})
 
+	t.Run("create duplicate user.name", func(t *testing.T) {
+		newUsers := []store.User{
+			{Name: rs("Admin 2"), Email: rs("admin2@cool.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{
+				{Name: rs("Admin")},
+				{Name: rs("User")},
+			}},
+			{Name: rs("User 1"), Email: rs("user99@foo.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{
+				{Name: rs("User")},
+			}},
+		}
+		_, err := storeCtx.AddUsers(newUsers)
+		assert.ErrorContains(t, err, "duplicate record (user.name) 'User 1'")
+	})
+
+	t.Run("create duplicate user.mail", func(t *testing.T) {
+		newUsers := []store.User{
+			{Name: rs("Admin 2"), Email: rs("admin2@cool.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{
+				{Name: rs("Admin")},
+				{Name: rs("User")},
+			}},
+			{Name: rs("User 99"), Email: rs("user1@foo.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{
+				{Name: rs("User")},
+			}},
+		}
+		_, err := storeCtx.AddUsers(newUsers)
+		assert.ErrorContains(t, err, "duplicate record (user.email) 'user1@foo.com'")
+	})
+
 	t.Run("Get user user1 and verify password", func(t *testing.T) {
 		user, err := storeCtx.GetUser(user1ID)
 		assert.NoError(t, err)
@@ -158,6 +194,27 @@ func TestUserPrivilegeCrud(t *testing.T) {
 			"Email":      "demo@foo.com",
 		}, "", "  ")
 		assert.Equal(t, string(estr), string(str))
+	})
+
+	t.Run("Update user unknown", func(t *testing.T) {
+		updateUser := store.User{
+			ID:   99999,
+			Name: rs("Unknown"),
+		}
+		err := storeCtx.UpdateUser(updateUser)
+		assert.ErrorContains(t, err, "error update user")
+		assert.ErrorContains(t, err, "affected 0")
+	})
+
+	t.Run("Update user privileges unknown", func(t *testing.T) {
+		updateUser := store.User{
+			ID: 99999,
+			Privileges: &[]store.Privilege{
+				{Name: rs("Admin")},
+			},
+		}
+		err := storeCtx.UpdateUser(updateUser)
+		assert.ErrorContains(t, err, "FOREIGN KEY constraint failed")
 	})
 
 	t.Run("Update demo set privileges", func(t *testing.T) {

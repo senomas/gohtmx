@@ -76,6 +76,7 @@ func (s *SqliteStoreCtx) FindUsers(f store.UserFilter, offset int64, limit int) 
 // AddUsers implements store.StoreCtx.
 func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 	tx := s.db.MustBegin()
+	defer tx.Rollback()
 	ps, err := tx.PrepareNamed("INSERT INTO user (name, email, password) VALUES (:name, :email, :password)")
 	if err != nil {
 		return nil, fmt.Errorf("error prepare insert into user: %v", err)
@@ -88,18 +89,18 @@ func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 	for _, user := range users {
 		rs, err := ps.Exec(user)
 		if err != nil {
-			return res, fmt.Errorf("error insert %+v: %v", user, err)
+			return nil, s.handleError(err, "%s %v: %v", "error insert user", user, err)
 		}
 		affected, err := rs.RowsAffected()
 		if err != nil {
-			return res, fmt.Errorf("error insert rows affected %v, %+v: %v", affected, user, err)
+			return res, fmt.Errorf("error insert user affected %v, %+v: %v", affected, user, err)
 		}
 		if affected != 1 {
-			return res, fmt.Errorf("error insert rows affected %v, %+v", affected, user)
+			return res, fmt.Errorf("error insert user affected %v, %+v", affected, user)
 		}
 		id, err := rs.LastInsertId()
 		if err != nil {
-			return res, fmt.Errorf("error insert rows get id %+v: %v", user, err)
+			return res, fmt.Errorf("error insert user get id %+v: %v", user, err)
 		}
 		user.ID = id
 		if user.Privileges != nil {
@@ -111,14 +112,14 @@ func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 				}
 				rs, err := psp.Exec(user.ID, privilege.ID)
 				if err != nil {
-					return res, fmt.Errorf("error insert privilege %+v: %v", privilege, err)
+					return res, s.handleError(err, "%s %v: %v", "error insert user_privilege", privilege, err)
 				}
 				affected, err := rs.RowsAffected()
 				if err != nil {
-					return res, fmt.Errorf("error insert rows affected %v, %+v: %v", affected, privilege, err)
+					return res, fmt.Errorf("error insert user_privilege affected %v, %+v: %v", affected, privilege, err)
 				}
 				if affected != 1 {
-					return res, fmt.Errorf("error insert rows affected %v, %+v", affected, privilege)
+					return res, fmt.Errorf("error insert user_privilege affected %v, %+v", affected, privilege)
 				}
 				privileges = append(privileges, privilege)
 			}
@@ -146,6 +147,7 @@ func (s *SqliteStoreCtx) UpdateUser(user store.User) error {
 		args = append(args, store.HashPassword(*user.Password))
 	}
 	tx := s.db.MustBegin()
+	defer tx.Rollback()
 	if len(updates) > 0 {
 		qry := "UPDATE user SET " + strings.Join(updates, ", ") + " WHERE id = ?"
 		args = append(args, user.ID)
@@ -155,10 +157,10 @@ func (s *SqliteStoreCtx) UpdateUser(user store.User) error {
 		}
 		affected, err := rs.RowsAffected()
 		if err != nil {
-			return fmt.Errorf("error update rows affected  %+v: %v", user, err)
+			return fmt.Errorf("error update user%s affected: %v", s.ValueString(user), err)
 		}
 		if affected != 1 {
-			return fmt.Errorf("error update rows affected %v, %+v", affected, user)
+			return fmt.Errorf("error update user%s affected %v", s.ValueString(user), affected)
 		}
 	}
 	if user.Privileges != nil {
@@ -207,41 +209,47 @@ func (s *SqliteStoreCtx) UpdateUser(user store.User) error {
 				rpid = append(rpid, o)
 			}
 		}
+		type UserPrivilege struct {
+			User      int64
+			Privilege int64
+		}
 		if len(ipid) > 0 {
-			ps, err := tx.Prepare("INSERT INTO user_privilege (user, privilege) VALUES (?, ?)")
+			ps, err := tx.PrepareNamed("INSERT INTO user_privilege (user, privilege) VALUES (:user, :privilege)")
 			if err != nil {
 				return fmt.Errorf("error prepare insert into user_privilege: %v", err)
 			}
 			for _, n := range ipid {
-				rs, err := ps.Exec(user.ID, n)
+				up := UserPrivilege{User: user.ID, Privilege: n}
+				rs, err := ps.Exec(up)
 				if err != nil {
-					return fmt.Errorf("error insert user_privilege %v: %v", n, err)
+					return fmt.Errorf("error insert user_privilege%s: %v", s.ValueString(up), err)
 				}
 				affected, err := rs.RowsAffected()
 				if err != nil {
-					return fmt.Errorf("error insert user_privilege affected %v, %+v: %v", affected, n, err)
+					return fmt.Errorf("error insert user_privilege%s affected %v: %v", s.ValueString(up), affected, err)
 				}
 				if affected != 1 {
-					return fmt.Errorf("error insert user_privilege affected %v, %+v", affected, n)
+					return fmt.Errorf("error insert user_privilege%s affected %v", s.ValueString(up), affected)
 				}
 			}
 		}
 		if len(rpid) > 0 {
-			ps, err := tx.Prepare("DELETE FROM user_privilege WHERE user = ? AND privilege = ?")
+			ps, err := tx.PrepareNamed("DELETE FROM user_privilege WHERE user = :user AND privilege = :privilege")
 			if err != nil {
 				return fmt.Errorf("error prepare delete user_privilege: %v", err)
 			}
 			for _, r := range rpid {
-				rs, err := ps.Exec(user.ID, r)
+				up := UserPrivilege{User: user.ID, Privilege: r}
+				rs, err := ps.Exec(up)
 				if err != nil {
-					return fmt.Errorf("error delete user_privilege %v: %v", r, err)
+					return fmt.Errorf("error delete user_privilege%s: %v", s.ValueString(up), err)
 				}
 				affected, err := rs.RowsAffected()
 				if err != nil {
-					return fmt.Errorf("error delete user_privilege affected %v, %+v: %v", affected, r, err)
+					return fmt.Errorf("error delete user_privilege%s affected %v: %v", s.ValueString(up), affected, err)
 				}
 				if affected != 1 {
-					return fmt.Errorf("error delete user_privilege affected %v, %+v", affected, r)
+					return fmt.Errorf("error delete user_privilege%s affected %v", s.ValueString(up), affected)
 				}
 			}
 		}
@@ -253,6 +261,7 @@ func (s *SqliteStoreCtx) UpdateUser(user store.User) error {
 // DeleteUsers implements store.StoreCtx.
 func (s *SqliteStoreCtx) DeleteUsers(ids []int64) error {
 	tx := s.db.MustBegin()
+	defer tx.Rollback()
 	qry := "DELETE FROM user WHERE id IN ("
 	args := []interface{}{}
 	for i, id := range ids {
@@ -268,14 +277,14 @@ func (s *SqliteStoreCtx) DeleteUsers(ids []int64) error {
 		if err.Error() == "FOREIGN KEY constraint failed" {
 			return fmt.Errorf("error delete user: record in use")
 		}
-		return fmt.Errorf("error delete user %s: %v", qry, err)
+		return fmt.Errorf("error delete user%s: %v", s.ValueString(ids), err)
 	}
 	affected, err := rs.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error delete user affected  %+v: %v", ids, err)
+		return fmt.Errorf("error delete user%s affected: %v", s.ValueString(ids), err)
 	}
 	if affected != int64(len(ids)) {
-		return fmt.Errorf("error delete user affected %v, %+v", affected, ids)
+		return fmt.Errorf("error delete user%s affected %v", s.ValueString(ids), affected)
 	}
 
 	err = tx.Commit()
