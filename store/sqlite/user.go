@@ -81,7 +81,7 @@ func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error prepare insert into user: %v", err)
 	}
-	psp, err := tx.Prepare("INSERT INTO user_privilege (user, privilege) VALUES (?, ?)")
+	psp, err := tx.PrepareNamed("INSERT INTO user_privilege (user, privilege) VALUES (:user, :privilege)")
 	if err != nil {
 		return nil, fmt.Errorf("error prepare insert into user_privilege: %v", err)
 	}
@@ -89,37 +89,59 @@ func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 	for _, user := range users {
 		rs, err := ps.Exec(user)
 		if err != nil {
-			return nil, s.handleError(err, "%s %v: %v", "error insert user", user, err)
+			em := err.Error()
+			if strings.HasPrefix(em, "UNIQUE constraint failed: ") {
+				ks := em[26:]
+				ka := strings.SplitN(ks, ".", 3)
+				var v interface{}
+				if len(ka) == 2 {
+					switch ka[1] {
+					case "name":
+						v = *user.Name
+					case "email":
+						v = *user.Email
+					default:
+						v = s.ValueString(user)
+					}
+				}
+				return nil, fmt.Errorf("error insert user%s: duplicate record %s '%v'", s.ValueString(user), ks, v)
+			}
+			return nil, fmt.Errorf("error insert user%s: %v", s.ValueString(user), err)
 		}
 		affected, err := rs.RowsAffected()
 		if err != nil {
-			return res, fmt.Errorf("error insert user affected %v, %+v: %v", affected, user, err)
+			return res, fmt.Errorf("error insert user%s affected %v: %v", s.ValueString(user), affected, err)
 		}
 		if affected != 1 {
-			return res, fmt.Errorf("error insert user affected %v, %+v", affected, user)
+			return res, fmt.Errorf("error insert user%s affected %v", s.ValueString(user), affected)
 		}
 		id, err := rs.LastInsertId()
 		if err != nil {
-			return res, fmt.Errorf("error insert user get id %+v: %v", user, err)
+			return res, fmt.Errorf("error insert user%s get id: %v", s.ValueString(user), err)
 		}
 		user.ID = id
 		if user.Privileges != nil {
 			privileges := []store.Privilege{}
+			type UserPrivilege struct {
+				User      int64
+				Privilege int64
+			}
 			for _, privilege := range *user.Privileges {
 				err := tx.Get(&privilege, "SELECT id, name, description FROM privilege WHERE name = ?", privilege.Name)
 				if err != nil {
 					return res, fmt.Errorf("error get privilege name '%s': %v", *privilege.Name, err)
 				}
-				rs, err := psp.Exec(user.ID, privilege.ID)
+				up := UserPrivilege{User: user.ID, Privilege: privilege.ID}
+				rs, err := psp.Exec(up)
 				if err != nil {
-					return res, s.handleError(err, "%s %v: %v", "error insert user_privilege", privilege, err)
+					return nil, fmt.Errorf("error insert user_privilege%s: %v", s.ValueString(up), err)
 				}
 				affected, err := rs.RowsAffected()
 				if err != nil {
-					return res, fmt.Errorf("error insert user_privilege affected %v, %+v: %v", affected, privilege, err)
+					return res, fmt.Errorf("error insert user_privilege%s affected %v: %v", s.ValueString(up), affected, err)
 				}
 				if affected != 1 {
-					return res, fmt.Errorf("error insert user_privilege affected %v, %+v", affected, privilege)
+					return res, fmt.Errorf("error insert user_privilege%s affected %v", s.ValueString(up), affected)
 				}
 				privileges = append(privileges, privilege)
 			}
@@ -274,19 +296,19 @@ func (s *SqliteStoreCtx) DeleteUsers(ids []int64) error {
 	qry += ")"
 	rs, err := tx.Exec(qry, args...)
 	if err != nil {
-		if err.Error() == "FOREIGN KEY constraint failed" {
-			return fmt.Errorf("error delete user: record in use")
+		em := err.Error()
+		if em == "FOREIGN KEY constraint failed" {
+			return fmt.Errorf("error delete user.id%s: record in use", s.ValueString(ids))
 		}
-		return fmt.Errorf("error delete user%s: %v", s.ValueString(ids), err)
+		return fmt.Errorf("error delete user.id%s: %v", s.ValueString(ids), err)
 	}
 	affected, err := rs.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error delete user%s affected: %v", s.ValueString(ids), err)
+		return fmt.Errorf("error delete user.id%s affected: %v", s.ValueString(ids), err)
 	}
 	if affected != int64(len(ids)) {
-		return fmt.Errorf("error delete user%s affected %v", s.ValueString(ids), affected)
+		return fmt.Errorf("error delete user.id%s affected %v", s.ValueString(ids), affected)
 	}
-
 	err = tx.Commit()
 	return err
 }

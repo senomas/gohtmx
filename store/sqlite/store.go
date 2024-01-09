@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/jmoiron/sqlx/reflectx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/senomas/gohtmx/store"
 )
@@ -101,33 +99,12 @@ func (s *SqliteStoreCtx) ValidLimit(limit int) bool {
 }
 
 func (s *SqliteStoreCtx) ValueString(v interface{}) string {
-	str, _ := json.Marshal(v)
-	return fmt.Sprintf("(%s)", str[1:len(str)-1])
-}
-
-func (s *SqliteStoreCtx) handleError(err error, format string, args ...interface{}) error {
-	em := err.Error()
-	if em == "FOREIGN KEY constraint failed" {
-		return fmt.Errorf("%s: record in use", args[0])
+	bstr, _ := json.Marshal(v)
+	str := string(bstr)
+	if strings.HasPrefix(str, "{") {
+		return fmt.Sprintf("(%s)", str[1:len(str)-1])
 	}
-	if strings.HasPrefix(em, "UNIQUE constraint failed: ") {
-		ks := em[26:]
-		ka := strings.SplitN(ks, ".", 3)
-		if len(ka) == 2 {
-			m := reflectx.NewMapperFunc("db", strings.ToLower)
-			ev := reflect.ValueOf(args[1])
-			ef := m.FieldByName(ev, ka[1])
-			if ef.Kind() == reflect.Ptr {
-				return fmt.Errorf("%s: duplicate record (%s) '%v'", args[0], ks, ef.Elem())
-			} else {
-				return fmt.Errorf("%s: duplicate record (%s) '%v'", args[0], ks, ef.String())
-			}
-		}
-		str, _ := json.Marshal(args[1])
-		return fmt.Errorf("%s: duplicate record (%s) %s", args[0], ks, str)
-	}
-	args[1], _ = json.Marshal(args[1])
-	return fmt.Errorf(format, args...)
+	return str
 }
 
 type filterCtx struct {

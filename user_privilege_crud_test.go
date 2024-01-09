@@ -53,7 +53,7 @@ func TestUserPrivilegeCrud(t *testing.T) {
 			{Name: rs("User"), Description: rs("User")},
 		}
 		_, err := storeCtx.AddPrivileges(newPrivileges)
-		assert.ErrorContains(t, err, "duplicate record (privilege.name) 'User'")
+		assert.ErrorContains(t, err, "duplicate record privilege.name 'User'")
 	})
 
 	var user1ID int64
@@ -148,7 +148,7 @@ func TestUserPrivilegeCrud(t *testing.T) {
 			}},
 		}
 		_, err := storeCtx.AddUsers(newUsers)
-		assert.ErrorContains(t, err, "duplicate record (user.name) 'User 1'")
+		assert.ErrorContains(t, err, "duplicate record user.name 'User 1'")
 	})
 
 	t.Run("create duplicate user.mail", func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestUserPrivilegeCrud(t *testing.T) {
 			}},
 		}
 		_, err := storeCtx.AddUsers(newUsers)
-		assert.ErrorContains(t, err, "duplicate record (user.email) 'user1@foo.com'")
+		assert.ErrorContains(t, err, "duplicate record user.email 'user1@foo.com'")
 	})
 
 	t.Run("Get user user1 and verify password", func(t *testing.T) {
@@ -400,6 +400,7 @@ func TestUserPrivilegeCrud(t *testing.T) {
 		privilege, err := storeCtx.GetPrivilegeByName("User")
 		assert.NoError(t, err)
 		err = storeCtx.DeletePrivileges([]int64{privilege.ID})
+		assert.ErrorContains(t, err, "error delete privilege.id")
 		assert.ErrorContains(t, err, "record in use")
 	})
 }

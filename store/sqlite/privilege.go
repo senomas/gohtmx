@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/senomas/gohtmx/store"
 )
@@ -66,18 +67,33 @@ func (s *SqliteStoreCtx) AddPrivileges(privileges []store.Privilege) ([]store.Pr
 	for _, privilege := range privileges {
 		rs, err := ps.Exec(privilege)
 		if err != nil {
-			return nil, s.handleError(err, "%s %v: %v", "error insert privilege", privilege, err)
+			em := err.Error()
+			if strings.HasPrefix(em, "UNIQUE constraint failed: ") {
+				ks := em[26:]
+				ka := strings.SplitN(ks, ".", 3)
+				var v interface{}
+				if len(ka) == 2 {
+					switch ka[1] {
+					case "name":
+						v = *privilege.Name
+					default:
+						v = s.ValueString(privilege)
+					}
+				}
+				return nil, fmt.Errorf("error insert privilege%s: duplicate record %s '%v'", s.ValueString(privilege), ks, v)
+			}
+			return nil, fmt.Errorf("error insert privilege%s: %v", s.ValueString(privilege), err)
 		}
 		affected, err := rs.RowsAffected()
 		if err != nil {
-			return res, fmt.Errorf("error insert privilege affected %v, %+v: %v", affected, privilege, err)
+			return res, fmt.Errorf("error insert privilege%s affected %v: %v", s.ValueString(privilege), affected, err)
 		}
 		if affected != 1 {
-			return res, fmt.Errorf("error insert privilege affected %v, %+v", affected, privilege)
+			return res, fmt.Errorf("error insert privilege%s affected %v", s.ValueString(privilege), affected)
 		}
 		id, err := rs.LastInsertId()
 		if err != nil {
-			return res, fmt.Errorf("error insert privilege get id %+v: %v", privilege, err)
+			return res, fmt.Errorf("error insert privilege%s get id: %v", s.ValueString(privilege), err)
 		}
 		privilege.ID = id
 		res = append(res, privilege)
@@ -102,14 +118,18 @@ func (s *SqliteStoreCtx) DeletePrivileges(ids []int64) error {
 	qry += ")"
 	rs, err := tx.Exec(qry, args...)
 	if err != nil {
-		return s.handleError(err, "%s '%s': %v", "error delete privilege", qry, err)
+		em := err.Error()
+		if em == "FOREIGN KEY constraint failed" {
+			return fmt.Errorf("error delete privilege.id%s: record in use", s.ValueString(ids))
+		}
+		return fmt.Errorf("error delete privilege.id%s: %v", s.ValueString(ids), err)
 	}
 	affected, err := rs.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error delete privilege affected  %+v: %v", ids, err)
+		return fmt.Errorf("error delete privilege.id%s affected: %v", s.ValueString(ids), err)
 	}
 	if affected != int64(len(ids)) {
-		return fmt.Errorf("error delete privilege affected %v, %+v", affected, ids)
+		return fmt.Errorf("error delete privilege.id%s affected %v", s.ValueString(ids), affected)
 	}
 	err = tx.Commit()
 	return err
