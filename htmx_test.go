@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -20,7 +21,13 @@ func TestTemplates(t *testing.T) {
 	storeCtx := store.Get(db_type)
 	assert.NotNil(t, storeCtx)
 	e := echo.New()
-	setupRouter(storeCtx, e)
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			cc := &AppContext{c, storeCtx}
+			return next(cc)
+		}
+	})
+	setupRouter(e)
 	go func() {
 		e.Start(":1323")
 	}()
@@ -157,8 +164,12 @@ func TestTemplates(t *testing.T) {
 		assert.Equal(t, estr, MustSerialize(t, StripRow(t, body)))
 	})
 
-	t.Run("GET /user/find?user.like=User%25", func(t *testing.T) {
-		res, err := http.Get("http://localhost:1323/user/find?name.like=User%25")
+	t.Run("GET json /user/find?user.like=User%25", func(t *testing.T) {
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", "http://localhost:1323/user/find?name.like=User%25", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Accept", "application/json")
+		res, err := client.Do(req)
 		assert.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, res.StatusCode)
@@ -168,7 +179,7 @@ func TestTemplates(t *testing.T) {
 		assert.NoError(t, err)
 
 		estr := MustSerialize(t, map[string]interface{}{
-			"list": []map[string]interface{}{
+			"users": []map[string]interface{}{
 				{
 					"Email":      "user1@foo.com",
 					"ID":         2,
@@ -192,6 +203,22 @@ func TestTemplates(t *testing.T) {
 		})
 
 		assert.Equal(t, estr, MustSerialize(t, StripRow(t, body)))
+	})
+
+	t.Run("GET /user/find?user.like=User%25", func(t *testing.T) {
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", "http://localhost:1323/user/find?name.like=User%25", nil)
+		assert.NoError(t, err)
+		res, err := client.Do(req)
+		assert.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		defer res.Body.Close()
+		bb, err := io.ReadAll(res.Body)
+		assert.NoError(t, err)
+
+		estr := `<table><tr><td>User 1</td><td>user1@foo.com</td></tr><tr><td>User 2</td><td>user2@foo.com</td></tr><tr><td>User 3</td><td>user3@foo.com</td></tr><tr><td>Total 3</td></tr></table>`
+		assert.Equal(t, estr, string(bb))
 	})
 }
 

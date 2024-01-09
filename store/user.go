@@ -24,6 +24,11 @@ type UserFilter struct {
 	ID    FilterInt64
 }
 
+type UserList struct {
+	Users []User `json:"users"`
+	Total int64  `json:"total"`
+}
+
 func HashPassword(password string) *string {
 	b := make([]byte, 16) // salt length
 	_, err := rand.Read(b)
