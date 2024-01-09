@@ -18,8 +18,10 @@ type SqliteStoreCtx struct {
 }
 
 func init() {
-	v := SqliteStoreCtx{}
-	store.AddImplementation("sqlite", v.init())
+	store.AddImplementation("sqlite", func() store.StoreCtx {
+		v := SqliteStoreCtx{}
+		return v.init()
+	})
 }
 
 func (s *SqliteStoreCtx) init() store.StoreCtx {
@@ -30,6 +32,11 @@ func (s *SqliteStoreCtx) init() store.StoreCtx {
 	db, err := sqlx.Open("sqlite3", url)
 	if err != nil {
 		panic(fmt.Errorf("error opening database [%s]: %v", url, err))
+	}
+
+	err = db.Ping()
+	if err != nil {
+		panic(fmt.Errorf("error ping database [%s]: %v", url, err))
 	}
 
 	qry := `PRAGMA foreign_keys = ON`

@@ -1,4 +1,4 @@
-package store
+package main
 
 import (
 	"encoding/json"
@@ -436,8 +436,8 @@ func StripRow(t *testing.T, row interface{}) interface{} {
 		res := map[string]interface{}{}
 		for _, k := range rv.MapKeys() {
 			switch k.String() {
-			case "ID":
-				// skip
+			// case "ID":
+			// skip
 			case "Password":
 				// skip
 			default:

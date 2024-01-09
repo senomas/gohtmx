@@ -22,9 +22,9 @@ type StoreCtx interface {
 	GetUserPrivileges(userID int64) ([]UserPrivilege, error)
 }
 
-var impls = map[string]StoreCtx{}
+var impls = map[string]func() StoreCtx{}
 
-func AddImplementation(name string, impl StoreCtx) {
+func AddImplementation(name string, impl func() StoreCtx) {
 	impls[name] = impl
 }
 
@@ -33,5 +33,5 @@ func Get(name string) StoreCtx {
 	if v == nil {
 		panic(fmt.Sprintf("No implementation for '%s'", name))
 	}
-	return v
+	return v()
 }
