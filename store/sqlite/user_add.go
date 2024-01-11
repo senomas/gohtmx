@@ -8,7 +8,7 @@ import (
 )
 
 // AddUsers implements store.store.
-func (s *SqliteAccountStore) AddUsers(users []store.User) ([]store.User, error) {
+func (s *SqliteAccountStore) AddUsers(users []*store.User) ([]*store.User, error) {
 	tx := s.db.MustBegin()
 	defer tx.Rollback()
 	ps, err := tx.PrepareNamed("INSERT INTO user (name, email, password) VALUES (:name, :email, :password)")
@@ -19,7 +19,7 @@ func (s *SqliteAccountStore) AddUsers(users []store.User) ([]store.User, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error prepare insert into user_privilege: %v", err)
 	}
-	res := []store.User{}
+	res := []*store.User{}
 	for _, user := range users {
 		rs, err := ps.Exec(user)
 		if err != nil {
@@ -55,13 +55,14 @@ func (s *SqliteAccountStore) AddUsers(users []store.User) ([]store.User, error) 
 		}
 		user.ID = id
 		if user.Privileges != nil {
-			privileges := []store.Privilege{}
+			privileges := []*store.Privilege{}
 			type UserPrivilege struct {
 				User      int64
 				Privilege int64
 			}
-			for _, privilege := range *user.Privileges {
-				err := tx.Get(&privilege, "SELECT id, name, description FROM privilege WHERE name = ?", privilege.Name)
+			for _, p := range *user.Privileges {
+				privilege := store.Privilege{}
+				err := tx.Get(&privilege, "SELECT id, name, description FROM privilege WHERE name = ?", p.Name)
 				if err != nil {
 					return res, fmt.Errorf("error get privilege name '%s': %v", *privilege.Name, err)
 				}
@@ -77,7 +78,7 @@ func (s *SqliteAccountStore) AddUsers(users []store.User) ([]store.User, error) 
 				if affected != 1 {
 					return res, fmt.Errorf("error insert user_privilege%s affected %v", s.ValueString(up), affected)
 				}
-				privileges = append(privileges, privilege)
+				privileges = append(privileges, &privilege)
 			}
 			user.Privileges = &privileges
 		}

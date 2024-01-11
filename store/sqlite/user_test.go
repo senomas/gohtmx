@@ -11,52 +11,46 @@ func TestCRUDUser(t *testing.T) {
 	accountStore := store.GetAccountStore("sqlite")
 
 	t.Run("populate privilege", func(t *testing.T) {
-		privileges := []store.Privilege{
-			{Name: rs("Admin"), Description: rs("Administrator")},
-			{Name: rs("User"), Description: rs("User")},
-			{Name: rs("Guest"), Description: rs("Guest")},
+		privileges := []*store.Privilege{
+			(&store.Privilege{}).SetName("Admin").SetDescription("Administrator"),
+			(&store.Privilege{}).SetName("User").SetDescription("User"),
+			(&store.Privilege{}).SetName("Guest").SetDescription("Guest"),
 		}
 		actualPrivileges, err := accountStore.AddPrivileges(privileges)
 		assert.NoError(t, err)
-		eprivileges := []store.Privilege{}
 		for i, p := range privileges {
 			p.ID = 1 + int64(i)
-			eprivileges = append(eprivileges, p)
 		}
-		assert.Equal(t, len(eprivileges), len(actualPrivileges), "len")
-		assert.Equal(t, eprivileges, actualPrivileges)
+		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
+		assert.Equal(t, privileges, actualPrivileges)
 	})
 
 	t.Run("populate user", func(t *testing.T) {
-		users := []store.User{
-			{
-				Email:      rs("admin@cool.com"),
-				Password:   rs("admin"),
-				Name:       rs("Administrator"),
-				Privileges: &[]store.Privilege{{Name: rs("Admin")}},
-			},
-			{
-				Email:      rs("user1@foo.com"),
-				Password:   rs("user1"),
-				Name:       rs("User 1"),
-				Privileges: &[]store.Privilege{{Name: rs("User")}},
-			},
+		users := []*store.User{
+			(&store.User{}).
+				SetName("Administrator").
+				SetEmail("admin@cool.com").
+				SetPassword("admin").
+				AddPrivilege((&store.Privilege{}).SetName("Admin")),
+			(&store.User{}).
+				SetName("User 1").
+				SetEmail("user1@foo.com").
+				SetPassword("user1").
+				AddPrivilege((&store.Privilege{}).SetName("User")),
 		}
 		actualUsers, err := accountStore.AddUsers(users)
 		assert.NoError(t, err)
-		eusers := []store.User{}
 		for i, u := range users {
 			u.ID = 1 + int64(i)
-			eprivileges := []store.Privilege{}
+			eprivileges := []*store.Privilege{}
 			for _, p := range *u.Privileges {
 				ep, err := accountStore.GetPrivilegeByName(*p.Name)
 				assert.NoError(t, err)
-				eprivileges = append(eprivileges, *ep)
+				eprivileges = append(eprivileges, ep)
 			}
 			u.Privileges = &eprivileges
-			eusers = append(eusers, u)
 		}
-		assert.Equal(t, len(eusers), len(actualUsers), "len")
-		assert.Equal(t, eusers, actualUsers)
+		assert.Equal(t, len(users), len(actualUsers), "len")
+		assert.Equal(t, users, actualUsers)
 	})
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/senomas/gohtmx/store"
 )
 
-func (s *SqliteAccountStore) UpdateUser(user store.User) error {
+func (s *SqliteAccountStore) UpdateUser(user *store.User) error {
 	updates := []string{}
 	args := []interface{}{}
 	if user.Name != nil {

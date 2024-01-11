@@ -12,7 +12,7 @@ import (
 
 type User struct {
 	Password   *string `db:"password"`
-	Privileges *[]Privilege
+	Privileges *[]*Privilege
 	Name       *string `db:"name"`
 	Email      *string `db:"email"`
 	ID         int64   `db:"id"`
@@ -27,6 +27,34 @@ type UserFilter struct {
 type UserList struct {
 	Users []User `json:"users"`
 	Total int64  `json:"total"`
+}
+
+func (u *User) SetName(v string) *User {
+	u.Name = &v
+	return u
+}
+
+func (u *User) SetEmail(v string) *User {
+	u.Email = &v
+	return u
+}
+
+func (u *User) SetPassword(v string) *User {
+	u.Password = HashPassword(v)
+	return u
+}
+
+func (u *User) SetPrivileges(v []*Privilege) *User {
+	u.Privileges = &v
+	return u
+}
+
+func (u *User) AddPrivilege(p *Privilege) *User {
+	if u.Privileges == nil {
+		u.Privileges = &[]*Privilege{}
+	}
+	*u.Privileges = append(*u.Privileges, p)
+	return u
 }
 
 func HashPassword(password string) *string {

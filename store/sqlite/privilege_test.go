@@ -12,80 +12,73 @@ func TestCRUDPrivilege(t *testing.T) {
 	accountStore := store.GetAccountStore("sqlite")
 
 	t.Run("populate privilege", func(t *testing.T) {
-		privileges := []store.Privilege{
-			{Name: rs("Admin"), Description: rs("Administrator")},
-			{Name: rs("User"), Description: rs("User")},
-			{Name: rs("Guest"), Description: rs("Guest")},
+		privileges := []*store.Privilege{
+			(&store.Privilege{}).SetName("Admin").SetDescription("Administrator"),
+			(&store.Privilege{}).SetName("User").SetDescription("User"),
+			(&store.Privilege{}).SetName("Guest").SetDescription("Guest"),
 		}
 		actualPrivileges, err := accountStore.AddPrivileges(privileges)
 		assert.NoError(t, err)
-		eprivileges := []store.Privilege{}
 		for i, p := range privileges {
 			p.ID = 1 + int64(i)
-			eprivileges = append(eprivileges, p)
 		}
-		assert.Equal(t, len(eprivileges), len(actualPrivileges), "len")
-		assert.Equal(t, eprivileges, actualPrivileges)
+		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
+		assert.Equal(t, privileges, actualPrivileges)
 	})
 
 	t.Run("find privilege", func(t *testing.T) {
-		eprivileges := []store.Privilege{
-			{ID: 1, Name: rs("Admin"), Description: rs("Administrator")},
-			{ID: 2, Name: rs("User"), Description: rs("User")},
-			{ID: 3, Name: rs("Guest"), Description: rs("Guest")},
+		privileges := []*store.Privilege{
+			(&store.Privilege{ID: 1}).SetName("Admin").SetDescription("Administrator"),
+			(&store.Privilege{ID: 2}).SetName("User").SetDescription("User"),
+			(&store.Privilege{ID: 3}).SetName("Guest").SetDescription("Guest"),
 		}
-		actualPrivileges, total, err := accountStore.FindPrivileges(store.PrivilegeFilter{}, 0, 100)
+		actualPrivileges, total, err := accountStore.FindPrivileges(&store.PrivilegeFilter{}, 0, 100)
 		assert.NoError(t, err)
-		assert.Equal(t, len(eprivileges), len(actualPrivileges), "len")
+		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
 		assert.EqualValues(t, 3, total, "total")
-		assert.Equal(t, eprivileges, actualPrivileges)
+		assert.Equal(t, privileges, actualPrivileges)
 	})
 
 	t.Run("populate privilege with dummy data", func(t *testing.T) {
-		privileges := []store.Privilege{}
+		privileges := []*store.Privilege{}
 		for i := 0; i < 100; i++ {
-			privileges = append(privileges, store.Privilege{
-				Name:        rs(fmt.Sprintf("Demo-%d", i)),
-				Description: rs(fmt.Sprintf("Demo %d", i)),
-			})
+			privileges = append(privileges,
+				(&store.Privilege{}).
+					SetName(fmt.Sprintf("Demo-%d", i)).SetDescription(fmt.Sprintf("Demo %d", i)))
 		}
 		actualPrivileges, err := accountStore.AddPrivileges(privileges)
 		assert.NoError(t, err)
-		eprivileges := []store.Privilege{}
 		for i, p := range privileges {
 			p.ID = 4 + int64(i)
-			eprivileges = append(eprivileges, p)
 		}
-		assert.Equal(t, len(eprivileges), len(actualPrivileges), "len")
-		assert.Equal(t, eprivileges, actualPrivileges)
+		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
+		assert.Equal(t, privileges, actualPrivileges)
 	})
 
 	t.Run("add non unique privilege", func(t *testing.T) {
-		privileges := []store.Privilege{
-			{Name: rs("Root"), Description: rs("Im GROOT")},
-			{Name: rs("User"), Description: rs("User")},
+		privileges := []*store.Privilege{
+			(&store.Privilege{}).SetName("Root").SetDescription("Im GROOT"),
+			(&store.Privilege{}).SetName("User").SetDescription("User"),
 		}
 		_, err := accountStore.AddPrivileges(privileges)
 		assert.ErrorContains(t, err, "duplicate record privilege.name 'User'")
 	})
 
 	t.Run("find privilege with offset and limit", func(t *testing.T) {
-		eprivileges := []store.Privilege{
-			{ID: 2, Name: rs("User"), Description: rs("User")},
-			{ID: 3, Name: rs("Guest"), Description: rs("Guest")},
+		privileges := []*store.Privilege{
+			(&store.Privilege{ID: 2}).SetName("User").SetDescription("User"),
+			(&store.Privilege{ID: 3}).SetName("Guest").SetDescription("Guest"),
 		}
 		for i := 0; i < 8; i++ {
-			eprivileges = append(eprivileges, store.Privilege{
-				ID:          4 + int64(i),
-				Name:        rs(fmt.Sprintf("Demo-%d", i)),
-				Description: rs(fmt.Sprintf("Demo %d", i)),
-			})
+			privileges = append(privileges,
+				(&store.Privilege{ID: 4 + int64(i)}).
+					SetName(fmt.Sprintf("Demo-%d", i)).SetDescription(fmt.Sprintf("Demo %d", i)))
 		}
-		actualPrivileges, total, err := accountStore.FindPrivileges(store.PrivilegeFilter{}, 1, 10)
+		actualPrivileges, total, err := accountStore.FindPrivileges(&store.PrivilegeFilter{}, 1, 10)
 		assert.NoError(t, err)
-		assert.Equal(t, len(eprivileges), len(actualPrivileges), "len")
+		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
 		assert.EqualValues(t, 103, total, "total")
-		assert.Equal(t, eprivileges, actualPrivileges)
+		assert.Equal(t, privileges, actualPrivileges)
 	})
 
 	t.Run("delete privilege dummy data", func(t *testing.T) {
@@ -98,19 +91,15 @@ func TestCRUDPrivilege(t *testing.T) {
 	})
 
 	t.Run("find privilege", func(t *testing.T) {
-		eprivileges := []store.Privilege{
-			{ID: 1, Name: rs("Admin"), Description: rs("Administrator")},
-			{ID: 2, Name: rs("User"), Description: rs("User")},
-			{ID: 3, Name: rs("Guest"), Description: rs("Guest")},
+		privileges := []*store.Privilege{
+			(&store.Privilege{ID: 1}).SetName("Admin").SetDescription("Administrator"),
+			(&store.Privilege{ID: 2}).SetName("User").SetDescription("User"),
+			(&store.Privilege{ID: 3}).SetName("Guest").SetDescription("Guest"),
 		}
-		actualPrivileges, total, err := accountStore.FindPrivileges(store.PrivilegeFilter{}, 0, 100)
+		actualPrivileges, total, err := accountStore.FindPrivileges(&store.PrivilegeFilter{}, 0, 100)
 		assert.NoError(t, err)
-		assert.Equal(t, len(eprivileges), len(actualPrivileges), "len")
+		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
 		assert.EqualValues(t, 3, total, "total")
-		assert.Equal(t, eprivileges, actualPrivileges)
+		assert.Equal(t, privileges, actualPrivileges)
 	})
-}
-
-func rs(v string) *string {
-	return &v
 }

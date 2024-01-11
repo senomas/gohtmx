@@ -7,7 +7,7 @@ import (
 )
 
 // FindUsers implements store.store.
-func (s *SqliteAccountStore) FindUsers(f store.UserFilter, offset int64, limit int) ([]store.User, int64, error) {
+func (s *SqliteAccountStore) FindUsers(f *store.UserFilter, offset int64, limit int) ([]*store.User, int64, error) {
 	ctx := filter{}
 	ctx.Int64("id", f.ID)
 	ctx.String("name", f.Name)
@@ -24,7 +24,7 @@ func (s *SqliteAccountStore) FindUsers(f store.UserFilter, offset int64, limit i
 	if err != nil {
 		return nil, 0, err
 	}
-	users := []store.User{}
+	users := []*store.User{}
 	qry = "SELECT id, name, email, password FROM user"
 	qry = ctx.AppendWhere(qry)
 	qry += " LIMIT ? OFFSET ?"

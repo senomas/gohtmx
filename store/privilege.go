@@ -18,3 +18,13 @@ type PrivilegeFilter struct {
 	Description FilterString
 	ID          FilterInt64
 }
+
+func (p *Privilege) SetName(v string) *Privilege {
+	p.Name = &v
+	return p
+}
+
+func (p *Privilege) SetDescription(v string) *Privilege {
+	p.Description = &v
+	return p
+}

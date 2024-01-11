@@ -7,7 +7,9 @@ import (
 )
 
 // FindPrivileges implements store.Store.
-func (s *SqliteAccountStore) FindPrivileges(f store.PrivilegeFilter, offset int64, limit int) ([]store.Privilege, int64, error) {
+func (s *SqliteAccountStore) FindPrivileges(
+	f *store.PrivilegeFilter, offset int64, limit int,
+) ([]*store.Privilege, int64, error) {
 	ctx := filter{}
 	ctx.Int64("id", f.ID)
 	ctx.String("name", f.Name)
@@ -24,7 +26,7 @@ func (s *SqliteAccountStore) FindPrivileges(f store.PrivilegeFilter, offset int6
 	if err != nil {
 		return nil, 0, err
 	}
-	privileges := []store.Privilege{}
+	privileges := []*store.Privilege{}
 	qry = "SELECT id, name, description FROM privilege"
 	qry = ctx.AppendWhere(qry)
 	qry += " LIMIT ? OFFSET ?"

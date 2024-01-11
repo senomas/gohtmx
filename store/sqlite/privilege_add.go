@@ -8,14 +8,14 @@ import (
 )
 
 // AddPrivileges implements store.Store.
-func (s *SqliteAccountStore) AddPrivileges(privileges []store.Privilege) ([]store.Privilege, error) {
+func (s *SqliteAccountStore) AddPrivileges(privileges []*store.Privilege) ([]*store.Privilege, error) {
 	tx := s.db.MustBegin()
 	defer tx.Rollback()
 	ps, err := tx.PrepareNamed("INSERT INTO privilege (name, description) VALUES (:name, :description)")
 	if err != nil {
 		return nil, fmt.Errorf("error creating PrepareNamed: %v", err)
 	}
-	res := []store.Privilege{}
+	res := []*store.Privilege{}
 	for _, privilege := range privileges {
 		rs, err := ps.Exec(privilege)
 		if err != nil {
