@@ -1,0 +1,27 @@
+package view
+
+import "fmt"
+ 
+templ UserAdmin(c *UserAdminContext) {
+  <html>
+    <body>
+      <div id="content">
+        @UserAdminList(c)
+      </div>
+    </body>
+  </html>
+}
+
+templ UserAdminList(c *UserAdminContext) {
+  <table>
+    for _, u := range c.List {
+      <tr>
+        <td>{ *u.Name }</td>
+        <td>{ *u.Email }</td>
+      </tr>
+    }
+    <tr>
+      <td>Total { fmt.Sprintf("%v", c.Total) }</td>
+    </tr>
+  </table>
+}
