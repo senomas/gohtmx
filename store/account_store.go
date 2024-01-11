@@ -1,8 +1,8 @@
-package stores
+package store
 
 import "fmt"
 
-type Store interface {
+type AccountStore interface {
 	Close() error
 
 	GetUser(id int64) (*User, error)
@@ -22,14 +22,14 @@ type Store interface {
 	GetUserPrivileges(userID int64) ([]UserPrivilege, error)
 }
 
-var stores = map[string]func() Store{}
+var accountStores = map[string]func() AccountStore{}
 
-func AddImplementation(name string, store func() Store) {
-	stores[name] = store
+func AddAccountStore(name string, store func() AccountStore) {
+	accountStores[name] = store
 }
 
-func Get(name string) Store {
-	v := stores[name]
+func GetAccountStore(name string) AccountStore {
+	v := accountStores[name]
 	if v == nil {
 		panic(fmt.Sprintf("No implementation for '%s'", name))
 	}

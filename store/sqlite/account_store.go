@@ -9,22 +9,22 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/senomas/gohtmx/stores"
+	"github.com/senomas/gohtmx/store"
 )
 
-type SqliteStore struct {
+type SqliteAccountStore struct {
 	db       *sqlx.DB
 	maxLimit int
 }
 
 func init() {
-	stores.AddImplementation("sqlite", func() stores.Store {
-		v := SqliteStore{}
+	store.AddAccountStore("sqlite", func() store.AccountStore {
+		v := SqliteAccountStore{}
 		return v.init()
 	})
 }
 
-func (s *SqliteStore) init() stores.Store {
+func (s *SqliteAccountStore) init() store.AccountStore {
 	url := os.Getenv("DB_URL")
 	if url == "" {
 		url = ":memory:"
@@ -80,7 +80,7 @@ func (s *SqliteStore) init() stores.Store {
 	if err != nil {
 		panic(fmt.Errorf("error creating table: %v\n\n%s", err, qry))
 	}
-	ctx := SqliteStore{
+	ctx := SqliteAccountStore{
 		db: db,
 	}
 
@@ -97,15 +97,15 @@ func (s *SqliteStore) init() stores.Store {
 	return &ctx
 }
 
-func (s *SqliteStore) Close() error {
+func (s *SqliteAccountStore) Close() error {
 	return s.db.Close()
 }
 
-func (s *SqliteStore) ValidLimit(limit int) bool {
+func (s *SqliteAccountStore) ValidLimit(limit int) bool {
 	return limit > 0 && limit <= s.maxLimit
 }
 
-func (s *SqliteStore) ValueString(v interface{}) string {
+func (s *SqliteAccountStore) ValueString(v interface{}) string {
 	bstr, _ := json.Marshal(v)
 	str := string(bstr)
 	if strings.HasPrefix(str, "{") {
@@ -119,10 +119,10 @@ type filter struct {
 	args    []interface{}
 }
 
-func (ctx *filter) Int64(field string, f stores.FilterInt64) {
+func (ctx *filter) Int64(field string, f store.FilterInt64) {
 	switch f.Op {
-	case stores.OP_NOP:
-	case stores.OP_EQ:
+	case store.OP_NOP:
+	case store.OP_EQ:
 		ctx.filters = append(ctx.filters, field+" = ?")
 		ctx.args = append(ctx.args, f.Value)
 	default:
@@ -130,13 +130,13 @@ func (ctx *filter) Int64(field string, f stores.FilterInt64) {
 	}
 }
 
-func (ctx *filter) String(field string, f stores.FilterString) {
+func (ctx *filter) String(field string, f store.FilterString) {
 	switch f.Op {
-	case stores.OP_NOP:
-	case stores.OP_EQ:
+	case store.OP_NOP:
+	case store.OP_EQ:
 		ctx.filters = append(ctx.filters, field+" = ?")
 		ctx.args = append(ctx.args, f.Value)
-	case stores.OP_LIKE:
+	case store.OP_LIKE:
 		ctx.filters = append(ctx.filters, field+" like ?")
 		ctx.args = append(ctx.args, f.Value)
 	default:

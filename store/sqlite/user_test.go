@@ -3,22 +3,22 @@ package sqlite_test
 import (
 	"testing"
 
-	"github.com/senomas/gohtmx/stores"
+	"github.com/senomas/gohtmx/store"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCRUDUser(t *testing.T) {
-	store := stores.Get("sqlite")
+	accountStore := store.GetAccountStore("sqlite")
 
 	t.Run("populate privilege", func(t *testing.T) {
-		privileges := []stores.Privilege{
+		privileges := []store.Privilege{
 			{Name: rs("Admin"), Description: rs("Administrator")},
 			{Name: rs("User"), Description: rs("User")},
 			{Name: rs("Guest"), Description: rs("Guest")},
 		}
-		actualPrivileges, err := store.AddPrivileges(privileges)
+		actualPrivileges, err := accountStore.AddPrivileges(privileges)
 		assert.NoError(t, err)
-		eprivileges := []stores.Privilege{}
+		eprivileges := []store.Privilege{}
 		for i, p := range privileges {
 			p.ID = 1 + int64(i)
 			eprivileges = append(eprivileges, p)
@@ -28,28 +28,28 @@ func TestCRUDUser(t *testing.T) {
 	})
 
 	t.Run("populate user", func(t *testing.T) {
-		users := []stores.User{
+		users := []store.User{
 			{
 				Email:      rs("admin@cool.com"),
 				Password:   rs("admin"),
 				Name:       rs("Administrator"),
-				Privileges: &[]stores.Privilege{{Name: rs("Admin")}},
+				Privileges: &[]store.Privilege{{Name: rs("Admin")}},
 			},
 			{
 				Email:      rs("user1@foo.com"),
 				Password:   rs("user1"),
 				Name:       rs("User 1"),
-				Privileges: &[]stores.Privilege{{Name: rs("User")}},
+				Privileges: &[]store.Privilege{{Name: rs("User")}},
 			},
 		}
-		actualUsers, err := store.AddUsers(users)
+		actualUsers, err := accountStore.AddUsers(users)
 		assert.NoError(t, err)
-		eusers := []stores.User{}
+		eusers := []store.User{}
 		for i, u := range users {
 			u.ID = 1 + int64(i)
-			eprivileges := []stores.Privilege{}
+			eprivileges := []store.Privilege{}
 			for _, p := range *u.Privileges {
-				ep, err := store.GetPrivilegeByName(*p.Name)
+				ep, err := accountStore.GetPrivilegeByName(*p.Name)
 				assert.NoError(t, err)
 				eprivileges = append(eprivileges, *ep)
 			}
