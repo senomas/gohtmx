@@ -53,7 +53,7 @@ func (s *SqliteAccountStore) AddUsers(users []*store.User) ([]*store.User, error
 		if err != nil {
 			return res, fmt.Errorf("error insert user%s get id: %v", s.ValueString(user), err)
 		}
-		user.ID = id
+		user.ID = &id
 		if user.Privileges != nil {
 			privileges := []*store.Privilege{}
 			type UserPrivilege struct {
@@ -66,7 +66,7 @@ func (s *SqliteAccountStore) AddUsers(users []*store.User) ([]*store.User, error
 				if err != nil {
 					return res, fmt.Errorf("error get privilege name '%s': %v", *privilege.Name, err)
 				}
-				up := UserPrivilege{User: user.ID, Privilege: privilege.ID}
+				up := UserPrivilege{User: *user.ID, Privilege: *privilege.ID}
 				rs, err := psp.Exec(up)
 				if err != nil {
 					return nil, fmt.Errorf("error insert user_privilege%s: %v", s.ValueString(up), err)

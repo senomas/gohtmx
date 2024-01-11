@@ -20,7 +20,7 @@ func TestCRUDPrivilege(t *testing.T) {
 		actualPrivileges, err := accountStore.AddPrivileges(privileges)
 		assert.NoError(t, err)
 		for i, p := range privileges {
-			p.ID = 1 + int64(i)
+			p.SetID(1 + int64(i))
 		}
 		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
 		assert.Equal(t, privileges, actualPrivileges)
@@ -28,9 +28,9 @@ func TestCRUDPrivilege(t *testing.T) {
 
 	t.Run("find privilege", func(t *testing.T) {
 		privileges := []*store.Privilege{
-			(&store.Privilege{ID: 1}).SetName("Admin").SetDescription("Administrator"),
-			(&store.Privilege{ID: 2}).SetName("User").SetDescription("User"),
-			(&store.Privilege{ID: 3}).SetName("Guest").SetDescription("Guest"),
+			(&store.Privilege{}).SetID(1).SetName("Admin").SetDescription("Administrator"),
+			(&store.Privilege{}).SetID(2).SetName("User").SetDescription("User"),
+			(&store.Privilege{}).SetID(3).SetName("Guest").SetDescription("Guest"),
 		}
 		actualPrivileges, total, err := accountStore.FindPrivileges(&store.PrivilegeFilter{}, 0, 100)
 		assert.NoError(t, err)
@@ -49,7 +49,7 @@ func TestCRUDPrivilege(t *testing.T) {
 		actualPrivileges, err := accountStore.AddPrivileges(privileges)
 		assert.NoError(t, err)
 		for i, p := range privileges {
-			p.ID = 4 + int64(i)
+			p.SetID(4 + int64(i))
 		}
 		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
 		assert.Equal(t, privileges, actualPrivileges)
@@ -66,13 +66,15 @@ func TestCRUDPrivilege(t *testing.T) {
 
 	t.Run("find privilege with offset and limit", func(t *testing.T) {
 		privileges := []*store.Privilege{
-			(&store.Privilege{ID: 2}).SetName("User").SetDescription("User"),
-			(&store.Privilege{ID: 3}).SetName("Guest").SetDescription("Guest"),
+			(&store.Privilege{}).SetID(2).SetName("User").SetDescription("User"),
+			(&store.Privilege{}).SetID(3).SetName("Guest").SetDescription("Guest"),
 		}
 		for i := 0; i < 8; i++ {
 			privileges = append(privileges,
-				(&store.Privilege{ID: 4 + int64(i)}).
-					SetName(fmt.Sprintf("Demo-%d", i)).SetDescription(fmt.Sprintf("Demo %d", i)))
+				(&store.Privilege{}).
+					SetID(4+int64(i)).
+					SetName(fmt.Sprintf("Demo-%d", i)).
+					SetDescription(fmt.Sprintf("Demo %d", i)))
 		}
 		actualPrivileges, total, err := accountStore.FindPrivileges(&store.PrivilegeFilter{}, 1, 10)
 		assert.NoError(t, err)
@@ -92,9 +94,9 @@ func TestCRUDPrivilege(t *testing.T) {
 
 	t.Run("find privilege", func(t *testing.T) {
 		privileges := []*store.Privilege{
-			(&store.Privilege{ID: 1}).SetName("Admin").SetDescription("Administrator"),
-			(&store.Privilege{ID: 2}).SetName("User").SetDescription("User"),
-			(&store.Privilege{ID: 3}).SetName("Guest").SetDescription("Guest"),
+			(&store.Privilege{}).SetID(1).SetName("Admin").SetDescription("Administrator"),
+			(&store.Privilege{}).SetID(2).SetName("User").SetDescription("User"),
+			(&store.Privilege{}).SetID(3).SetName("Guest").SetDescription("Guest"),
 		}
 		actualPrivileges, total, err := accountStore.FindPrivileges(&store.PrivilegeFilter{}, 0, 100)
 		assert.NoError(t, err)

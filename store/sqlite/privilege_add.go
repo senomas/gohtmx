@@ -47,7 +47,7 @@ func (s *SqliteAccountStore) AddPrivileges(privileges []*store.Privilege) ([]*st
 		if err != nil {
 			return res, fmt.Errorf("error insert privilege%s get id: %v", s.ValueString(privilege), err)
 		}
-		privilege.ID = id
+		privilege.ID = &id
 		res = append(res, privilege)
 	}
 	err = tx.Commit()

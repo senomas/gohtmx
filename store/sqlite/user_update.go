@@ -95,7 +95,7 @@ func (s *SqliteAccountStore) UpdateUser(user *store.User) error {
 				return fmt.Errorf("error prepare insert into user_privilege: %v", err)
 			}
 			for _, n := range ipid {
-				up := UserPrivilege{User: user.ID, Privilege: n}
+				up := UserPrivilege{User: *user.ID, Privilege: n}
 				rs, err := ps.Exec(up)
 				if err != nil {
 					return fmt.Errorf("error insert user_privilege%s: %v", s.ValueString(up), err)
@@ -115,7 +115,7 @@ func (s *SqliteAccountStore) UpdateUser(user *store.User) error {
 				return fmt.Errorf("error prepare delete user_privilege: %v", err)
 			}
 			for _, r := range rpid {
-				up := UserPrivilege{User: user.ID, Privilege: r}
+				up := UserPrivilege{User: *user.ID, Privilege: r}
 				rs, err := ps.Exec(up)
 				if err != nil {
 					return fmt.Errorf("error delete user_privilege%s: %v", s.ValueString(up), err)

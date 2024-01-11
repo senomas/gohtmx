@@ -15,7 +15,14 @@ type User struct {
 	Privileges *[]*Privilege
 	Name       *string `db:"name"`
 	Email      *string `db:"email"`
-	ID         int64   `db:"id"`
+	ID         *int64  `db:"id"`
+}
+
+type UserPrivilege struct {
+	Name        *string
+	Description *string
+	UserID      *int64
+	ID          *int64
 }
 
 type UserFilter struct {
@@ -27,6 +34,11 @@ type UserFilter struct {
 type UserList struct {
 	Users []User `json:"users"`
 	Total int64  `json:"total"`
+}
+
+func (u *User) SetID(v int64) *User {
+	u.ID = &v
+	return u
 }
 
 func (u *User) SetName(v string) *User {

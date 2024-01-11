@@ -19,7 +19,7 @@ func TestCRUDUser(t *testing.T) {
 		actualPrivileges, err := accountStore.AddPrivileges(privileges)
 		assert.NoError(t, err)
 		for i, p := range privileges {
-			p.ID = 1 + int64(i)
+			p.SetID(1 + int64(i))
 		}
 		assert.Equal(t, len(privileges), len(actualPrivileges), "len")
 		assert.Equal(t, privileges, actualPrivileges)
@@ -41,7 +41,7 @@ func TestCRUDUser(t *testing.T) {
 		actualUsers, err := accountStore.AddUsers(users)
 		assert.NoError(t, err)
 		for i, u := range users {
-			u.ID = 1 + int64(i)
+			u.SetID(1 + int64(i))
 			eprivileges := []*store.Privilege{}
 			for _, p := range *u.Privileges {
 				ep, err := accountStore.GetPrivilegeByName(*p.Name)
