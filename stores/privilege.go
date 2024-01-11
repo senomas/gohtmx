@@ -1,4 +1,4 @@
-package store
+package stores
 
 type Privilege struct {
 	Name        *string

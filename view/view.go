@@ -2,12 +2,12 @@ package view
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/senomas/gohtmx/store"
+	"github.com/senomas/gohtmx/stores"
 )
 
 type ViewContext struct {
 	echo.Context
 
-	StoreCtx     store.StoreCtx
+	store        stores.Store
 	userAdminCtx *UserAdminContext
 }

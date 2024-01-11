@@ -4,15 +4,15 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/senomas/gohtmx/store"
+	"github.com/senomas/gohtmx/stores"
 )
 
 type UserAdminContext struct {
 	Error  error
-	Edit   *store.User
-	View   *store.User
-	List   []store.User
-	Filter store.UserFilter
+	Edit   *stores.User
+	View   *stores.User
+	List   []stores.User
+	Filter stores.UserFilter
 	Offset int64
 	Limit  int
 	Total  int64
@@ -20,7 +20,7 @@ type UserAdminContext struct {
 
 func UserAdminHandler(c echo.Context) error {
 	viewCtx := c.(*ViewContext)
-	storeCtx := viewCtx.StoreCtx
+	storeCtx := viewCtx.store
 
 	pc := viewCtx.userAdminCtx
 	if pc == nil {

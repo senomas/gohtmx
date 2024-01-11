@@ -9,22 +9,22 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/senomas/gohtmx/store"
+	"github.com/senomas/gohtmx/stores"
 )
 
-type SqliteStoreCtx struct {
+type SqliteStore struct {
 	db       *sqlx.DB
 	maxLimit int
 }
 
 func init() {
-	store.AddImplementation("sqlite", func() store.StoreCtx {
-		v := SqliteStoreCtx{}
+	stores.AddImplementation("sqlite", func() stores.Store {
+		v := SqliteStore{}
 		return v.init()
 	})
 }
 
-func (s *SqliteStoreCtx) init() store.StoreCtx {
+func (s *SqliteStore) init() stores.Store {
 	url := os.Getenv("DB_URL")
 	if url == "" {
 		url = ":memory:"
@@ -80,7 +80,7 @@ func (s *SqliteStoreCtx) init() store.StoreCtx {
 	if err != nil {
 		panic(fmt.Errorf("error creating table: %v\n\n%s", err, qry))
 	}
-	ctx := SqliteStoreCtx{
+	ctx := SqliteStore{
 		db: db,
 	}
 
@@ -97,15 +97,15 @@ func (s *SqliteStoreCtx) init() store.StoreCtx {
 	return &ctx
 }
 
-func (s *SqliteStoreCtx) Close() error {
+func (s *SqliteStore) Close() error {
 	return s.db.Close()
 }
 
-func (s *SqliteStoreCtx) ValidLimit(limit int) bool {
+func (s *SqliteStore) ValidLimit(limit int) bool {
 	return limit > 0 && limit <= s.maxLimit
 }
 
-func (s *SqliteStoreCtx) ValueString(v interface{}) string {
+func (s *SqliteStore) ValueString(v interface{}) string {
 	bstr, _ := json.Marshal(v)
 	str := string(bstr)
 	if strings.HasPrefix(str, "{") {
@@ -114,15 +114,15 @@ func (s *SqliteStoreCtx) ValueString(v interface{}) string {
 	return str
 }
 
-type filterCtx struct {
+type filter struct {
 	filters []string
 	args    []interface{}
 }
 
-func (ctx *filterCtx) Int64(field string, f store.FilterInt64) {
+func (ctx *filter) Int64(field string, f stores.FilterInt64) {
 	switch f.Op {
-	case store.OP_NOP:
-	case store.OP_EQ:
+	case stores.OP_NOP:
+	case stores.OP_EQ:
 		ctx.filters = append(ctx.filters, field+" = ?")
 		ctx.args = append(ctx.args, f.Value)
 	default:
@@ -130,13 +130,13 @@ func (ctx *filterCtx) Int64(field string, f store.FilterInt64) {
 	}
 }
 
-func (ctx *filterCtx) String(field string, f store.FilterString) {
+func (ctx *filter) String(field string, f stores.FilterString) {
 	switch f.Op {
-	case store.OP_NOP:
-	case store.OP_EQ:
+	case stores.OP_NOP:
+	case stores.OP_EQ:
 		ctx.filters = append(ctx.filters, field+" = ?")
 		ctx.args = append(ctx.args, f.Value)
-	case store.OP_LIKE:
+	case stores.OP_LIKE:
 		ctx.filters = append(ctx.filters, field+" like ?")
 		ctx.args = append(ctx.args, f.Value)
 	default:
@@ -144,7 +144,7 @@ func (ctx *filterCtx) String(field string, f store.FilterString) {
 	}
 }
 
-func (ctx *filterCtx) AppendWhere(query string) string {
+func (ctx *filter) AppendWhere(query string) string {
 	if len(ctx.filters) > 0 {
 		return query + " WHERE " + strings.Join(ctx.filters, " AND ")
 	}

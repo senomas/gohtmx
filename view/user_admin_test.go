@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	"github.com/senomas/gohtmx/store"
-	_ "github.com/senomas/gohtmx/store/sqlite"
+	"github.com/senomas/gohtmx/stores"
+	_ "github.com/senomas/gohtmx/stores/sqlite"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,14 +17,14 @@ func TestUserAdmin(t *testing.T) {
 	if db_type == "" {
 		db_type = "sqlite"
 	}
-	storeCtx := store.Get(db_type)
+	storeCtx := stores.Get(db_type)
 	assert.NotNil(t, storeCtx)
 	e := echo.New()
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			cc := &ViewContext{}
 			cc.Context = c
-			cc.StoreCtx = storeCtx
+			cc.store = storeCtx
 			return next(cc)
 		}
 	})
@@ -51,10 +51,10 @@ func TestUserAdmin(t *testing.T) {
 	})
 }
 
-func initPrivileges(storeCtx store.StoreCtx) func(t *testing.T) {
+func initPrivileges(storeCtx stores.Store) func(t *testing.T) {
 	rs := func(s string) *string { return &s }
 	return func(t *testing.T) {
-		newPrivileges := []store.Privilege{
+		newPrivileges := []stores.Privilege{
 			{Name: rs("Admin"), Description: rs("Administrator")},
 			{Name: rs("User"), Description: rs("User")},
 			{Name: rs("Guest"), Description: rs("Guest")},
@@ -64,21 +64,21 @@ func initPrivileges(storeCtx store.StoreCtx) func(t *testing.T) {
 	}
 }
 
-func initUsers(storeCtx store.StoreCtx) func(t *testing.T) {
+func initUsers(storeCtx stores.Store) func(t *testing.T) {
 	rs := func(s string) *string { return &s }
 	return func(t *testing.T) {
-		newUsers := []store.User{
-			{Name: rs("Admin 1"), Email: rs("admin1@cool.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{
+		newUsers := []stores.User{
+			{Name: rs("Admin 1"), Email: rs("admin1@cool.com"), Password: stores.HashPassword("dodol123"), Privileges: &[]stores.Privilege{
 				{Name: rs("Admin")},
 				{Name: rs("User")},
 			}},
-			{Name: rs("User 1"), Email: rs("user1@foo.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{
+			{Name: rs("User 1"), Email: rs("user1@foo.com"), Password: stores.HashPassword("dodol123"), Privileges: &[]stores.Privilege{
 				{Name: rs("User")},
 			}},
-			{Name: rs("User 2"), Email: rs("user2@foo.com"), Password: store.HashPassword("duren123"), Privileges: &[]store.Privilege{
+			{Name: rs("User 2"), Email: rs("user2@foo.com"), Password: stores.HashPassword("duren123"), Privileges: &[]stores.Privilege{
 				{Name: rs("User")},
 			}},
-			{Name: rs("User 3"), Email: rs("user3@foo.com"), Password: store.HashPassword("dodol123"), Privileges: &[]store.Privilege{
+			{Name: rs("User 3"), Email: rs("user3@foo.com"), Password: stores.HashPassword("dodol123"), Privileges: &[]stores.Privilege{
 				{Name: rs("User")},
 			}},
 		}

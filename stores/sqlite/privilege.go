@@ -4,33 +4,33 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/senomas/gohtmx/store"
+	"github.com/senomas/gohtmx/stores"
 )
 
-// GetPrivilege implements store.StoreCtx.
-func (s *SqliteStoreCtx) GetPrivilege(id int64) (*store.Privilege, error) {
-	var privilege store.Privilege
+// GetPrivilege implements stores.Store.
+func (s *SqliteStore) GetPrivilege(id int64) (*stores.Privilege, error) {
+	var privilege stores.Privilege
 	err := s.db.Get(&privilege, "SELECT id, name, description FROM privilege WHERE id = ?", id)
 	return &privilege, err
 }
 
-// GetPrivilegeByName implements store.StoreCtx.
-func (s *SqliteStoreCtx) GetPrivilegeByName(name string) (*store.Privilege, error) {
-	var privilege store.Privilege
+// GetPrivilegeByName implements stores.Store.
+func (s *SqliteStore) GetPrivilegeByName(name string) (*stores.Privilege, error) {
+	var privilege stores.Privilege
 	err := s.db.Get(&privilege, "SELECT id, name, description FROM privilege WHERE name = ?", name)
 	return &privilege, err
 }
 
-// GetUserPrivileges implements store.StoreCtx.
-func (s *SqliteStoreCtx) GetUserPrivileges(userID int64) ([]store.UserPrivilege, error) {
-	privileges := []store.UserPrivilege{}
+// GetUserPrivileges implements stores.Store.
+func (s *SqliteStore) GetUserPrivileges(userID int64) ([]stores.UserPrivilege, error) {
+	privileges := []stores.UserPrivilege{}
 	err := s.db.Select(&privileges, "SELECT p.id, p.name, p.description FROM privilege p JOIN user_privilege up ON p.id = up.privilege WHERE up.user = ?", userID)
 	return privileges, err
 }
 
-// FindPrivileges implements store.StoreCtx.
-func (s *SqliteStoreCtx) FindPrivileges(f store.PrivilegeFilter, offset int64, limit int) ([]store.Privilege, int64, error) {
-	ctx := filterCtx{}
+// FindPrivileges implements stores.Store.
+func (s *SqliteStore) FindPrivileges(f stores.PrivilegeFilter, offset int64, limit int) ([]stores.Privilege, int64, error) {
+	ctx := filter{}
 	ctx.Int64("id", f.ID)
 	ctx.String("name", f.Name)
 	ctx.String("description", f.Description)
@@ -46,7 +46,7 @@ func (s *SqliteStoreCtx) FindPrivileges(f store.PrivilegeFilter, offset int64, l
 	if err != nil {
 		return nil, 0, err
 	}
-	privileges := []store.Privilege{}
+	privileges := []stores.Privilege{}
 	qry = "SELECT id, name, description FROM privilege"
 	qry = ctx.AppendWhere(qry)
 	qry += " LIMIT ? OFFSET ?"
@@ -55,15 +55,15 @@ func (s *SqliteStoreCtx) FindPrivileges(f store.PrivilegeFilter, offset int64, l
 	return privileges, total, err
 }
 
-// AddPrivileges implements store.StoreCtx.
-func (s *SqliteStoreCtx) AddPrivileges(privileges []store.Privilege) ([]store.Privilege, error) {
+// AddPrivileges implements stores.Store.
+func (s *SqliteStore) AddPrivileges(privileges []stores.Privilege) ([]stores.Privilege, error) {
 	tx := s.db.MustBegin()
 	defer tx.Rollback()
 	ps, err := tx.PrepareNamed("INSERT INTO privilege (name, description) VALUES (:name, :description)")
 	if err != nil {
 		return nil, fmt.Errorf("error creating PrepareNamed: %v", err)
 	}
-	res := []store.Privilege{}
+	res := []stores.Privilege{}
 	for _, privilege := range privileges {
 		rs, err := ps.Exec(privilege)
 		if err != nil {
@@ -102,8 +102,8 @@ func (s *SqliteStoreCtx) AddPrivileges(privileges []store.Privilege) ([]store.Pr
 	return res, err
 }
 
-// DeletePrivileges implements store.StoreCtx.
-func (s *SqliteStoreCtx) DeletePrivileges(ids []int64) error {
+// DeletePrivileges implements stores.Store.
+func (s *SqliteStore) DeletePrivileges(ids []int64) error {
 	tx := s.db.MustBegin()
 	defer tx.Rollback()
 	qry := "DELETE FROM privilege WHERE id IN ("

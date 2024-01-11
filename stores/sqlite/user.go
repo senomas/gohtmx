@@ -4,51 +4,51 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/senomas/gohtmx/store"
+	"github.com/senomas/gohtmx/stores"
 )
 
-// GetUser implements store.StoreCtx.
-func (s *SqliteStoreCtx) GetUser(id int64) (*store.User, error) {
-	var user store.User
+// GetUser implements stores.stores.
+func (s *SqliteStore) GetUser(id int64) (*stores.User, error) {
+	var user stores.User
 	err := s.db.Get(&user, "SELECT id, name, email, password FROM user WHERE id = ?", id)
 	if err != nil {
 		return nil, err
 	}
-	privileges := []store.Privilege{}
+	privileges := []stores.Privilege{}
 	err = s.db.Select(&privileges, "SELECT p.id, p.name, p.description FROM privilege p JOIN user_privilege up ON p.id = up.privilege WHERE up.user = ?", id)
 	user.Privileges = &privileges
 	return &user, err
 }
 
-// GetUserByName implements store.StoreCtx.
-func (s *SqliteStoreCtx) GetUserByName(name string) (*store.User, error) {
-	var user store.User
+// GetUserByName implements stores.stores.
+func (s *SqliteStore) GetUserByName(name string) (*stores.User, error) {
+	var user stores.User
 	err := s.db.Get(&user, "SELECT id, name, email, password FROM user WHERE name = ?", name)
 	if err != nil {
 		return nil, err
 	}
-	privileges := []store.Privilege{}
+	privileges := []stores.Privilege{}
 	err = s.db.Select(&privileges, "SELECT p.id, p.name, p.description FROM privilege p JOIN user_privilege up ON p.id = up.privilege WHERE up.user = ?", user.ID)
 	user.Privileges = &privileges
 	return &user, err
 }
 
-// GetUserByEmail implements store.StoreCtx.
-func (s *SqliteStoreCtx) GetUserByEmail(email string) (*store.User, error) {
-	var user store.User
+// GetUserByEmail implements stores.stores.
+func (s *SqliteStore) GetUserByEmail(email string) (*stores.User, error) {
+	var user stores.User
 	err := s.db.Get(&user, "SELECT id, name, email, password FROM user WHERE email = ?", email)
 	if err != nil {
 		return nil, err
 	}
-	privileges := []store.Privilege{}
+	privileges := []stores.Privilege{}
 	err = s.db.Select(&privileges, "SELECT p.id, p.name, p.description FROM privilege p JOIN user_privilege up ON p.id = up.privilege WHERE up.user = ?", user.ID)
 	user.Privileges = &privileges
 	return &user, err
 }
 
-// FindUsers implements store.StoreCtx.
-func (s *SqliteStoreCtx) FindUsers(f store.UserFilter, offset int64, limit int) ([]store.User, int64, error) {
-	ctx := filterCtx{}
+// FindUsers implements stores.stores.
+func (s *SqliteStore) FindUsers(f stores.UserFilter, offset int64, limit int) ([]stores.User, int64, error) {
+	ctx := filter{}
 	ctx.Int64("id", f.ID)
 	ctx.String("name", f.Name)
 	ctx.String("email", f.Email)
@@ -64,7 +64,7 @@ func (s *SqliteStoreCtx) FindUsers(f store.UserFilter, offset int64, limit int) 
 	if err != nil {
 		return nil, 0, err
 	}
-	users := []store.User{}
+	users := []stores.User{}
 	qry = "SELECT id, name, email, password FROM user"
 	qry = ctx.AppendWhere(qry)
 	qry += " LIMIT ? OFFSET ?"
@@ -73,8 +73,8 @@ func (s *SqliteStoreCtx) FindUsers(f store.UserFilter, offset int64, limit int) 
 	return users, total, err
 }
 
-// AddUsers implements store.StoreCtx.
-func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
+// AddUsers implements stores.stores.
+func (s *SqliteStore) AddUsers(users []stores.User) ([]stores.User, error) {
 	tx := s.db.MustBegin()
 	defer tx.Rollback()
 	ps, err := tx.PrepareNamed("INSERT INTO user (name, email, password) VALUES (:name, :email, :password)")
@@ -85,7 +85,7 @@ func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error prepare insert into user_privilege: %v", err)
 	}
-	res := []store.User{}
+	res := []stores.User{}
 	for _, user := range users {
 		rs, err := ps.Exec(user)
 		if err != nil {
@@ -121,7 +121,7 @@ func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 		}
 		user.ID = id
 		if user.Privileges != nil {
-			privileges := []store.Privilege{}
+			privileges := []stores.Privilege{}
 			type UserPrivilege struct {
 				User      int64
 				Privilege int64
@@ -153,7 +153,7 @@ func (s *SqliteStoreCtx) AddUsers(users []store.User) ([]store.User, error) {
 	return res, err
 }
 
-func (s *SqliteStoreCtx) UpdateUser(user store.User) error {
+func (s *SqliteStore) UpdateUser(user stores.User) error {
 	updates := []string{}
 	args := []interface{}{}
 	if user.Name != nil {
@@ -166,7 +166,7 @@ func (s *SqliteStoreCtx) UpdateUser(user store.User) error {
 	}
 	if user.Password != nil {
 		updates = append(updates, "password = ?")
-		args = append(args, store.HashPassword(*user.Password))
+		args = append(args, stores.HashPassword(*user.Password))
 	}
 	tx := s.db.MustBegin()
 	defer tx.Rollback()
@@ -280,8 +280,8 @@ func (s *SqliteStoreCtx) UpdateUser(user store.User) error {
 	return err
 }
 
-// DeleteUsers implements store.StoreCtx.
-func (s *SqliteStoreCtx) DeleteUsers(ids []int64) error {
+// DeleteUsers implements stores.stores.
+func (s *SqliteStore) DeleteUsers(ids []int64) error {
 	tx := s.db.MustBegin()
 	defer tx.Rollback()
 	qry := "DELETE FROM user WHERE id IN ("
