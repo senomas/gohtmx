@@ -1,4 +1,4 @@
-package sqlite_test
+package mariadb_test
 
 import (
 	"testing"
@@ -7,8 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCRUDSqliteUser(t *testing.T) {
-	accountStore := store.GetAccountStore("sqlite")
+func TestCRUDMariadbUser(t *testing.T) {
+	startMariaDB(t)
+	defer stopMariaDB(t)
+
+	accountStore := store.GetAccountStore("mariadb")
 
 	t.Run("populate privilege", func(t *testing.T) {
 		privileges := []*store.Privilege{

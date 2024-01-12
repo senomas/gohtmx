@@ -3,6 +3,7 @@ module github.com/senomas/gohtmx
 go 1.21.4
 
 require (
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-sqlite3 v1.14.19
 	github.com/stretchr/testify v1.8.4
